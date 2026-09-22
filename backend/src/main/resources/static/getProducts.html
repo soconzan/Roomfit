@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>상품 목록 테스트</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 16px; }
+        .controls { display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+        .controls input[type="number"] { width:80px; }
+        .controls input[type="text"] { width:240px; }
+        .product { display:flex; gap:12px; padding:8px; border-bottom:1px solid #eee; align-items:center; }
+        .thumb { width:80px; height:80px; background:#f5f5f5; display:inline-block; object-fit:cover; }
+        .meta { flex:1; }
+        .meta h4 { margin:0 0 6px 0; font-size:16px; }
+        .meta .price { color:green; font-weight:bold; }
+        .status { margin-top:8px; color:#555; }
+        .loader { text-align:center; padding:12px; color:#666; }
+        .empty { padding:24px; text-align:center; color:#666; }
+        button { padding:6px 10px; }
+    </style>
+</head>
+<body>
+    <h2>상품 목록 테스트 페이지</h2>
+    <div class="controls">
+        <label>카테고리 ID: <input id="category" type="number" value="1" min="1" /></label>
+        <label>검색어: <input id="keyword" type="text" placeholder="검색어 입력" /></label>
+        <button id="searchBtn">검색</button>
+        <button id="resetBtn">초기 목록</button>
+        <label>한 번에 로드할 개수: <input id="limit" type="number" value="10" min="1" style="width:70px" /></label>
+    </div>
+
+    <div id="summary" class="status">로딩 전</div>
+    <div id="products"></div>
+    <div id="loader" class="loader" style="display:none">로딩중...</div>
+
+    <script>
+        // 현재 상태
+        let mode = 'list'; // 'list' 또는 'search'
+        let currentKeyword = '';
+        let currentCategory = Number(document.getElementById('category').value) || 1;
+        let limit = Number(document.getElementById('limit').value) || 10;
+        let nextCursor = null;
+        let hasNext = false;
+        let loading = false;
+
+        const productsEl = document.getElementById('products');
+        const loaderEl = document.getElementById('loader');
+        const summaryEl = document.getElementById('summary');
+        const categoryEl = document.getElementById('category');
+        const keywordEl = document.getElementById('keyword');
+        const searchBtn = document.getElementById('searchBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const limitEl = document.getElementById('limit');
+
+        function setSummary() {
+            const count = productsEl.children.length;
+            summaryEl.textContent = `Search Products Result: ${count} products found. Has Next: ${hasNext}`;
+        }
+
+        function formatPrice(p) {
+            if (p == null) return '-';
+            return p.toLocaleString();
+        }
+
+        function renderProduct(item) {
+            // ProductListResponseDTO: productId, productName, productPrice, createdAt, thumbnailUrl, categoryName
+            const div = document.createElement('div');
+            div.className = 'product';
+
+            const img = document.createElement('img');
+            img.className = 'thumb';
+            img.src = item.thumbnailUrl || '/static/image/defaultImage.png';
+            img.alt = item.productName || 'thumb';
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+
+            const title = document.createElement('h4');
+            title.textContent = `${item.productName || '(이름 없음)'} [ID: ${item.productId}]`;
+
+            const info = document.createElement('div');
+            info.innerHTML = `카테고리: ${item.categoryName || '-'} &nbsp; | &nbsp; 가격: <span class="price">${formatPrice(item.productPrice)}</span>`;
+
+            const created = document.createElement('div');
+            if (item.createdAt) {
+                const d = new Date(item.createdAt);
+                created.textContent = '등록일: ' + d.toLocaleString();
+            }
+
+            meta.appendChild(title);
+            meta.appendChild(info);
+            meta.appendChild(created);
+
+            div.appendChild(img);
+            div.appendChild(meta);
+
+            return div;
+        }
+
+        async function fetchPage(cursor) {
+            if (loading) return;
+            loading = true;
+            loaderEl.style.display = 'block';
+
+            currentCategory = Number(categoryEl.value) || 1;
+            limit = Number(limitEl.value) || 10;
+
+            const params = new URLSearchParams();
+            params.set('categoryId', currentCategory);
+            params.set('limit', limit);
+            if (cursor != null) params.set('lastFetchedId', cursor);
+            if (mode === 'search' && currentKeyword) params.set('keyword', currentKeyword);
+
+            const endpoint = mode === 'search' ? '/api/products/search' : '/api/products';
+            const url = "http://localhost:8080" + endpoint + '?' + params.toString();
+
+            try {
+                const resp = await fetch(url, { method: 'GET' });
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    console.error('HTTP error', resp.status, text);
+                    summaryEl.textContent = `HTTP error ${resp.status}`;
+                    return;
+                }
+                const json = await resp.json();
+                if (!json.success) {
+                    summaryEl.textContent = 'API error: ' + (json.message || 'Unknown');
+                    return;
+                }
+                const data = json.data || {};
+                const items = data.product || [];
+                hasNext = !!data.hasNext;
+                nextCursor = data.nextCursor || null;
+
+                // append items
+                if (!cursor) {
+                    // 초기 로드: 비우고 새로 렌더
+                    productsEl.innerHTML = '';
+                }
+
+                if (items.length === 0 && !cursor) {
+                    productsEl.innerHTML = `<div class="empty">검색 결과가 없습니다.</div>`;
+                } else {
+                    items.forEach(it => {
+                        const node = renderProduct(it);
+                        productsEl.appendChild(node);
+                    });
+                }
+
+                setSummary();
+            } catch (err) {
+                console.error('Fetch failed', err);
+                summaryEl.textContent = 'Fetch error: ' + err.message;
+            } finally {
+                loading = false;
+                loaderEl.style.display = 'none';
+            }
+        }
+
+        function loadNextIfNeeded() {
+            if (loading) return;
+            if (!hasNext) return;
+            // nextCursor may be null but hasNext true shouldn't happen; guard
+            const cursor = nextCursor;
+            if (cursor == null) return;
+            fetchPage(cursor);
+        }
+
+        // 스크롤 감지 (바닥 근처에 도달하면 추가 로드)
+        window.addEventListener('scroll', () => {
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+                loadNextIfNeeded();
+            }
+        });
+
+        // 검색 버튼
+        searchBtn.addEventListener('click', () => {
+            mode = 'search';
+            currentKeyword = keywordEl.value.trim();
+            nextCursor = null;
+            hasNext = false;
+            productsEl.innerHTML = '';
+            setSummary();
+            fetchPage(null);
+        });
+
+        // 초기 목록 보기 버튼
+        resetBtn.addEventListener('click', () => {
+            mode = 'list';
+            currentKeyword = '';
+            keywordEl.value = '';
+            nextCursor = null;
+            hasNext = false;
+            productsEl.innerHTML = '';
+            setSummary();
+            fetchPage(null);
+        });
+
+        // 페이지 로드 시 초기 데이터 로드
+        window.addEventListener('load', () => {
+            setSummary();
+            fetchPage(null);
+        });
+    </script>
+</body>
+</html>

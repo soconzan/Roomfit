@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Product Test</title>
+</head>
+<body>
+    <h1>Create Product</h1>
+    <form action="/products" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="userId">User ID:</label>
+            <input type="text" id="userId" name="userId" required>
+        </div>
+        <div>
+            <label for="categoryId">Category ID:</label>
+            <input type="text" id="categoryId" name="categoryId" required>
+        </div>
+        <div>
+            <label for="productName">Product Name:</label>
+            <input type="text" id="productName" name="productName" required>
+        </div>
+        <div>
+            <label for="productPrice">Price:</label>
+            <input type="number" id="productPrice" name="productPrice" required>
+        </div>
+        <div>
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" required></textarea>
+        </div>
+        <div>
+            <label for="productWidth">Width:</label>
+            <input type="number" step="0.01" id="productWidth" name="productWidth">
+        </div>
+        <div>
+            <label for="productDepth">Depth:</label>
+            <input type="number" step="0.01" id="productDepth" name="productDepth">
+        </div>
+        <div>
+            <label for="productHeight">Height:</label>
+            <input type="number" step="0.01" id="productHeight" name="productHeight">
+        </div>
+        <div>
+            <label for="productMaterial">Material:</label>
+            <input type="text" id="productMaterial" name="productMaterial">
+        </div>
+        <div>
+            <label for="images">Images:</label>
+            <input type="file" id="images" name="images" multiple required>
+        </div>
+        <div>
+            <label for="frontImage">Front Image:</label>
+            <input type="file" id="frontImage" name="frontImage">
+        </div>
+        <div>
+            <label for="leftImage">Left Image:</label>
+            <input type="file" id="leftImage" name="leftImage">
+        </div>
+        <div>
+            <label for="rightImage">Right Image:</label>
+            <input type="file" id="rightImage" name="rightImage">
+        </div>
+        <div>
+            <label for="backImage">Back Image:</label>
+            <input type="file" id="backImage" name="backImage">
+        </div>
+        <button type="submit">Create Product</button>
+    </form>
+
+    <script>
+        document.querySelector('form').addEventListener('submit', async function(event) {
+            event.preventDefault(); // 기본 폼 제출 방지
+
+            const form = event.target;
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch('http://localhost:8080/api/products', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.text();
+                    alert('Success: ' + result);
+                } else {
+                    alert('Error: ' + response.statusText);
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                alert('An error occurred during submission.');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "roomfit-dffa0",
+          "appId": "1:737910084682:android:9c07fc5ad582e1772a82b3",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "roomfit-dffa0",
+          "configurations": {
+            "android": "1:737910084682:android:9c07fc5ad582e1772a82b3",
+            "ios": "1:737910084682:ios:715930a30c5398692a82b3",
+            "macos": "1:737910084682:ios:e8c6cfe305abe6b82a82b3",
+            "web": "1:737910084682:web:11cc8d3938c0715a2a82b3",
+            "windows": "1:737910084682:web:e2e2d7ff247d36be2a82b3"
+          }
+        }
+      }
+    }
+  }
+}
